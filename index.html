@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DigiSoc Claw Machine</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@400;600;700;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #F5F5F0;
+            overflow: hidden;
+            height: 100dvh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        #game-wrapper {
+            width: 100%;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: #F5F5F0;
+            overflow: hidden;
+        }
+
+        #cabinet-header {
+            background: linear-gradient(180deg, #6A4BD7 0%, #6A4BD7 100%);
+            padding: 12px 16px;
+            text-align: center;
+            border-bottom: 3px solid #6A4BD7;
+            position: relative;
+            z-index: 10;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        #cabinet-header img {
+            height: 60px;
+            width: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            position: absolute;
+            left: 16px;
+        }
+
+        #cabinet-header h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.6rem;
+            color: white;
+            letter-spacing: 2px;
+        }
+
+        @keyframes shimmer {
+            to { background-position: 200% center; }
+        }
+
+        #game-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #controls {
+            padding: 12px 20px 20px;
+            text-align: center;
+            background: linear-gradient(180deg, #6A4BD7 0%, #6A4BD7 100%);
+            border-top: 3px solid #6A4BD7;
+            flex-shrink: 0;
+        }
+
+        #actionBtn {
+            width: 100%;
+            max-width: 500px;
+            padding: 18px 40px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: clamp(1.4rem, 2.5vw, 2rem);
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #actionBtn.play {
+            background: #6AEEAF;
+            color: white;
+            box-shadow: 0 4px 20px rgba(106, 238, 175, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+            animation: btnPulse 2s ease-in-out infinite;
+        }
+
+        #actionBtn.drop {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+            animation: btnPulse 0.8s ease-in-out infinite;
+        }
+
+        #actionBtn.disabled {
+            background: linear-gradient(135deg, #374151, #1f2937);
+            color: #6b7280;
+            box-shadow: none;
+            animation: none;
+            pointer-events: none;
+        }
+
+        #actionBtn:active:not(.disabled) {
+            transform: scale(0.96);
+        }
+
+        @keyframes btnPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        #overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        #overlay.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #overlay-bg {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+        }
+
+        #prize-card {
+            position: relative;
+            background: linear-gradient(135deg, #6A4BD7, #6A4BD7);
+            border: 2px solid #6A4BD7;
+            border-radius: 24px;
+            padding: 40px 32px;
+            text-align: center;
+            max-width: 340px;
+            width: 90%;
+            transform: scale(0.8);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 0 60px rgba(106, 75, 215, 0.3);
+        }
+
+        #overlay.visible #prize-card {
+            transform: scale(1);
+        }
+
+        #prize-emoji {
+            font-size: 4rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        #prize-title {
+            font-family: 'Russo One', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        #prize-message {
+            font-size: 1rem;
+            color: #BDB0EA;
+            margin-bottom: 24px;
+            line-height: 1.4;
+        }
+
+        #playAgainBtn {
+            padding: 14px 40px;
+            font-family: 'Russo One', sans-serif;
+            font-size: 1rem;
+            background: #6AEEAF;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            letter-spacing: 2px;
+            transition: transform 0.15s ease;
+            box-shadow: 0 4px 15px rgba(106, 238, 175, 0.3);
+        }
+
+        #playAgainBtn:active {
+            transform: scale(0.96);
+        }
+
+        #stats {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 0.65rem;
+            color: #6b7280;
+            z-index: 20;
+            text-align: right;
+            line-height: 1.5;
+        }
+
+        #confettiCanvas {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 90;
+        }
+
+        .prize-no { color: #9ca3af; }
+        .prize-small { color: #4ade80; }
+        .prize-big { color: #fbbf24; text-shadow: 0 0 20px rgba(251, 191, 36, 0.5); }
+
+        #cabinet-header h1 {
+            font-size: clamp(1.6rem, 3vw, 2.5rem);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-wrapper">
+        <div id="cabinet-header">
+            <img src="logo.jpeg" alt="DigiSoc">
+            <h1>Digisoc Claw Machine</h1>
+        </div>
+
+        <div id="game-area">
+            <canvas id="gameCanvas"></canvas>
+            <canvas id="confettiCanvas"></canvas>
+            <div id="stats"></div>
+        </div>
+
+        <div id="controls">
+            <button id="actionBtn" class="play">TAP TO PLAY</button>
+        </div>
+
+        <div id="overlay">
+            <div id="overlay-bg"></div>
+            <div id="prize-card">
+                <span id="prize-emoji"></span>
+                <h2 id="prize-title"></h2>
+                <p id="prize-message"></p>
+                <button id="playAgainBtn">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ==========================================
+    // CONFIGURATION - Edit these to customize!
+    // ==========================================
+    const CONFIG = {
+        prizes: [
+            { name: 'No Prize', weight: 60, color: '#6B7280', emoji: '❌', message: 'Better luck next time!', cssClass: 'prize-no' },
+            { name: 'Small Win!', weight: 30, color: '#4ADE80', emoji: '🎉', message: 'Nice! You won a small prize!', cssClass: 'prize-small' },
+            { name: 'BIG WIN!',   weight: 10, color: '#FFD700', emoji: '🏆', message: 'INCREDIBLE! You won the grand prize!', cssClass: 'prize-big' }
+        ],
+        clawSpeed: 7,         // Horizontal claw speed
+        dropSpeed: 4,         // How fast claw drops
+        riseSpeed: 3,         // How fast claw rises
+        grabPause: 600,       // ms pause when grabbing
+        enableSounds: true    // Toggle sound effects
+    };
+
+    // ==========================================
+    // SOUND ENGINE (Web Audio API - no files needed)
+    // ==========================================
+    class SoundEngine {
+        constructor() {
+            this.ctx = null;
+            this.enabled = CONFIG.enableSounds;
+        }
+
+        init() {
+            if (this.ctx) return;
+            try {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch(e) {
+                this.enabled = false;
+            }
+        }
+
+        play(type) {
+            if (!this.enabled || !this.ctx) return;
+            try {
+                switch(type) {
+                    case 'move': this._beep(200, 0.05, 0.05, 'sine'); break;
+                    case 'drop': this._sweep(400, 150, 0.3, 0.15); break;
+                    case 'grab': this._noise(0.15, 0.1); break;
+                    case 'rise': this._sweep(200, 400, 0.2, 0.4); break;
+                    case 'win-small': this._fanfare([523, 659, 784], 0.15); break;
+                    case 'win-big': this._fanfare([523, 659, 784, 1047], 0.25); break;
+                    case 'lose': this._sweep(300, 150, 0.15, 0.4); break;
+                    case 'click': this._beep(600, 0.05, 0.03, 'square'); break;
+                }
+            } catch(e) {}
+        }
+
+        _beep(freq, vol, dur, type) {
+            const o = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            o.type = type;
+            o.frequency.value = freq;
+            g.gain.value = vol;
+            g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+            o.connect(g).connect(this.ctx.destination);
+            o.start();
+            o.stop(this.ctx.currentTime + dur);
+        }
+
+        _sweep(startFreq, endFreq, vol, dur) {
+            const o = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            o.type = 'sine';
+            o.frequency.value = startFreq;
+            o.frequency.linearRampToValueAtTime(endFreq, this.ctx.currentTime + dur);
+            g.gain.value = vol;
+            g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+            o.connect(g).connect(this.ctx.destination);
+            o.start();
+            o.stop(this.ctx.currentTime + dur + 0.01);
+        }
+
+        _fanfare(freqs, vol) {
+            freqs.forEach((f, i) => {
+                setTimeout(() => this._beep(f, vol, 0.3, 'sine'), i * 150);
+            });
+        }
+
+        _noise(vol, dur) {
+            const bufferSize = this.ctx.sampleRate * dur;
+            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+            const source = this.ctx.createBufferSource();
+            source.buffer = buffer;
+            const g = this.ctx.createGain();
+            g.gain.value = vol;
+            g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+            source.connect(g).connect(this.ctx.destination);
+            source.start();
+        }
+    }
+
+    // ==========================================
+    // CONFETTI SYSTEM
+    // ==========================================
+    class ConfettiSystem {
+        constructor(canvas) {
+            this.canvas = canvas;
+            this.ctx = canvas.getContext('2d');
+            this.particles = [];
+            this.active = false;
+        }
+
+        resize(w, h) {
+            this.canvas.width = w;
+            this.canvas.height = h;
+        }
+
+        burst(x, y, count, colors) {
+            this.active = true;
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+                const speed = 4 + Math.random() * 8;
+                this.particles.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 4,
+                    size: 4 + Math.random() * 6,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    rotation: Math.random() * Math.PI * 2,
+                    rotSpeed: (Math.random() - 0.5) * 0.3,
+                    life: 1,
+                    decay: 0.008 + Math.random() * 0.008,
+                    shape: Math.random() > 0.5 ? 'rect' : 'circle'
+                });
+            }
+        }
+
+        rain(count, colors) {
+            this.active = true;
+            const w = this.canvas.width;
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    this.particles.push({
+                        x: Math.random() * w,
+                        y: -10,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: 2 + Math.random() * 4,
+                        size: 4 + Math.random() * 6,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        rotation: Math.random() * Math.PI * 2,
+                        rotSpeed: (Math.random() - 0.5) * 0.2,
+                        life: 1,
+                        decay: 0.003 + Math.random() * 0.005,
+                        shape: Math.random() > 0.5 ? 'rect' : 'circle'
+                    });
+                }, i * 20);
+            }
+        }
+
+        update() {
+            if (!this.active) return;
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            for (let i = this.particles.length - 1; i >= 0; i--) {
+                const p = this.particles[i];
+                p.x += p.vx;
+                p.vy += 0.15;
+                p.y += p.vy;
+                p.rotation += p.rotSpeed;
+                p.life -= p.decay;
+
+                if (p.life <= 0) {
+                    this.particles.splice(i, 1);
+                    continue;
+                }
+
+                this.ctx.save();
+                this.ctx.translate(p.x, p.y);
+                this.ctx.rotate(p.rotation);
+                this.ctx.globalAlpha = p.life;
+                this.ctx.fillStyle = p.color;
+
+                if (p.shape === 'rect') {
+                    this.ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+                } else {
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                this.ctx.restore();
+            }
+
+            if (this.particles.length === 0) {
+                this.active = false;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+        }
+    }
+
+    // ==========================================
+    // MAIN GAME
+    // ==========================================
+    const State = {
+        IDLE: 'idle',
+        MOVING: 'moving',
+        DROPPING: 'dropping',
+        GRABBING: 'grabbing',
+        RISING: 'rising',
+        REVEAL: 'reveal'
+    };
+
+    class ClawMachine {
+        constructor() {
+            this.canvas = document.getElementById('gameCanvas');
+            this.ctx = this.canvas.getContext('2d');
+            this.confettiCanvas = document.getElementById('confettiCanvas');
+            this.confetti = new ConfettiSystem(this.confettiCanvas);
+            this.sound = new SoundEngine();
+
+            // Preload bear image
+            this.bearImg = new Image();
+            this.bearImg.src = 'bear.png';
+            this.bearLoaded = false;
+            this.bearImg.onload = () => { this.bearLoaded = true; };
+
+            this.btn = document.getElementById('actionBtn');
+            this.overlay = document.getElementById('overlay');
+            this.statsEl = document.getElementById('stats');
+
+            this.state = State.IDLE;
+            this.claw = { x: 0, y: 0, openAngle: 0.5, direction: 1 };
+            this.capsules = [];
+            this.grabbedCapsule = null;
+            this.currentPrize = null;
+            this.shakeAmount = 0;
+            this.glowPhase = 0;
+            this.willMiss = false;
+            this.droppedCapsule = null;
+
+            // Stats
+            this.totalPlays = 0;
+            this.smallWins = 0;
+            this.bigWins = 0;
+
+            // Layout values (set in resize)
+            this.railY = 0;
+            this.floorY = 0;
+            this.capsuleRadius = 0;
+            this.clawWidth = 0;
+
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+
+            this.btn.addEventListener('click', () => this.onAction());
+            this.btn.addEventListener('touchstart', (e) => { e.preventDefault(); this.onAction(); });
+            document.getElementById('playAgainBtn').addEventListener('click', () => this.reset());
+
+            this.lastTime = 0;
+            this.animate = this.animate.bind(this);
+            requestAnimationFrame(this.animate);
+        }
+
+        resize() {
+            const container = this.canvas.parentElement;
+            const dpr = window.devicePixelRatio || 1;
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+
+            this.canvas.width = w * dpr;
+            this.canvas.height = h * dpr;
+            this.canvas.style.width = w + 'px';
+            this.canvas.style.height = h + 'px';
+            this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            this.confetti.resize(w * dpr, h * dpr);
+            this.confettiCanvas.style.width = w + 'px';
+            this.confettiCanvas.style.height = h + 'px';
+            this.confetti.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            this.W = w;
+            this.H = h;
+
+            // Layout
+            this.railY = 30;
+            this.floorY = h - 16;
+            this.capsuleRadius = Math.max(20, Math.min(40, w * 0.04));
+            this.clawWidth = this.capsuleRadius * 2.2;
+
+            // Init claw position
+            if (this.state === State.IDLE) {
+                this.claw.x = w / 2;
+                this.claw.y = this.railY + 10;
+            }
+
+            this.initCapsules();
+        }
+
+        initCapsules() {
+            this.capsules = [];
+            const r = this.capsuleRadius;
+            const hues = [0, 30, 90, 150, 200, 260, 310, 45];
+
+            // Sparse placement: 6-8 capsules scattered across the floor
+            const margin = r * 3;
+            const usableWidth = this.W - margin * 2;
+            const capsuleCount = Math.max(5, Math.min(8, Math.floor(usableWidth / 120)));
+            const spacing = usableWidth / capsuleCount;
+
+            for (let i = 0; i < capsuleCount; i++) {
+                // Offset each capsule randomly within its slot for organic look
+                const slotCenter = margin + spacing * i + spacing / 2;
+                const jitterX = (Math.random() - 0.5) * spacing * 0.4;
+                const jitterY = (Math.random() - 0.5) * r * 1.5;
+                const row = i % 2;
+
+                this.capsules.push({
+                    x: slotCenter + jitterX,
+                    y: this.floorY - r * 3 - row * r * 2 + jitterY,
+                    baseX: slotCenter + jitterX,
+                    baseY: this.floorY - r * 3 - row * r * 2 + jitterY,
+                    radius: r,
+                    hue: hues[i % hues.length],
+                    phase: Math.random() * Math.PI * 2,
+                    visible: true
+                });
+            }
+        }
+
+        determinePrize() {
+            const roll = Math.random() * 100;
+            let cumulative = 0;
+            for (const prize of CONFIG.prizes) {
+                cumulative += prize.weight;
+                if (roll < cumulative) return prize;
+            }
+            return CONFIG.prizes[0];
+        }
+
+        onAction() {
+            this.sound.init();
+
+            if (this.state === State.IDLE) {
+                this.sound.play('click');
+                this.state = State.MOVING;
+                this.claw.direction = 1;
+                this.claw.openAngle = 0.5;
+                this.btn.textContent = 'DROP!';
+                this.btn.className = 'drop';
+            } else if (this.state === State.MOVING) {
+                this.sound.play('drop');
+                this.state = State.DROPPING;
+                this.currentPrize = this.determinePrize();
+                // Pick a capsule near the claw's x position
+                this.pickTargetCapsule();
+                this.btn.textContent = '...';
+                this.btn.className = 'disabled';
+            }
+        }
+
+        pickTargetCapsule() {
+            const visible = this.capsules.filter(c => c.visible);
+            if (visible.length === 0) {
+                this.initCapsules();
+            }
+            const visibleNow = this.capsules.filter(c => c.visible);
+
+            // Find closest capsule to claw x
+            visibleNow.sort((a, b) => Math.abs(a.x - this.claw.x) - Math.abs(b.x - this.claw.x));
+            const nearest = visibleNow[0];
+            const grabRange = this.capsuleRadius * 0.5;
+
+            if (nearest && Math.abs(nearest.x - this.claw.x) <= grabRange) {
+                // Close enough to grab
+                this.targetCapsule = nearest;
+                this.dropTargetY = nearest.y - this.capsuleRadius * 0.3;
+                this.willMiss = false;
+            } else {
+                // Too far - claw will miss
+                this.targetCapsule = null;
+                this.dropTargetY = this.floorY - this.capsuleRadius * 2;
+                this.willMiss = true;
+                // Force "no prize" on a miss
+                this.currentPrize = CONFIG.prizes[0];
+            }
+        }
+
+        reset() {
+            this.overlay.classList.remove('visible');
+            this.state = State.IDLE;
+            this.claw.x = this.W / 2;
+            this.claw.y = this.railY + 10;
+            this.claw.openAngle = 0.5;
+            this.grabbedCapsule = null;
+            this.currentPrize = null;
+            this.targetCapsule = null;
+            this.willMiss = false;
+            this.droppedCapsule = null;
+            this.shakeAmount = 0;
+
+            // Restore all capsules
+            this.capsules.forEach(c => c.visible = true);
+
+            this.btn.textContent = 'TAP TO PLAY';
+            this.btn.className = 'play';
+        }
+
+        showPrize() {
+            this.state = State.REVEAL;
+            this.totalPlays++;
+
+            const prize = this.currentPrize;
+            const prizeIndex = CONFIG.prizes.indexOf(prize);
+
+            document.getElementById('prize-emoji').textContent = prize.emoji;
+            const titleEl = document.getElementById('prize-title');
+            titleEl.textContent = prize.name;
+            titleEl.className = prize.cssClass;
+            document.getElementById('prize-message').textContent = prize.message;
+
+            this.overlay.classList.add('visible');
+
+            const cx = this.W / 2;
+            const cy = this.H / 2;
+
+            if (prizeIndex === 1) {
+                // Small win
+                this.smallWins++;
+                this.sound.play('win-small');
+                this.confetti.burst(cx, cy, 40, ['#4ade80', '#22d3ee', '#9B82E3', '#fbbf24']);
+            } else if (prizeIndex === 2) {
+                // Big win
+                this.bigWins++;
+                this.sound.play('win-big');
+                this.shakeAmount = 12;
+                this.confetti.burst(cx, cy, 80, ['#fbbf24', '#f59e0b', '#ef4444', '#ec4899', '#9B82E3', '#06b6d4']);
+                this.confetti.rain(60, ['#fbbf24', '#f59e0b', '#ef4444', '#ec4899', '#9B82E3']);
+            } else {
+                this.sound.play('lose');
+            }
+
+            this.updateStats();
+        }
+
+        updateStats() {
+            this.statsEl.innerHTML = `Plays: ${this.totalPlays} | Wins: ${this.smallWins + this.bigWins}`;
+        }
+
+        // ==========================================
+        // DRAWING
+        // ==========================================
+
+        drawBackground() {
+            const ctx = this.ctx;
+            // Subtle grid pattern
+            ctx.strokeStyle = 'rgba(106, 75, 215, 0.1)';
+            ctx.lineWidth = 1;
+            const gridSize = 30;
+            for (let x = 0; x < this.W; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, this.H);
+                ctx.stroke();
+            }
+            for (let y = 0; y < this.H; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(this.W, y);
+                ctx.stroke();
+            }
+
+            // Floor
+            const floorGrad = ctx.createLinearGradient(0, this.floorY - 20, 0, this.floorY);
+            floorGrad.addColorStop(0, 'transparent');
+            floorGrad.addColorStop(1, 'rgba(106, 75, 215, 0.2)');
+            ctx.fillStyle = floorGrad;
+            ctx.fillRect(0, this.floorY - 20, this.W, 20);
+
+            // Floor line
+            ctx.strokeStyle = 'rgba(106, 75, 215, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, this.floorY);
+            ctx.lineTo(this.W, this.floorY);
+            ctx.stroke();
+        }
+
+        drawRail() {
+            const ctx = this.ctx;
+            // Rail bar
+            const grad = ctx.createLinearGradient(0, this.railY - 4, 0, this.railY + 4);
+            grad.addColorStop(0, '#4a4a7a');
+            grad.addColorStop(0.5, '#6a6aaa');
+            grad.addColorStop(1, '#3a3a6a');
+            ctx.fillStyle = grad;
+            ctx.fillRect(10, this.railY - 4, this.W - 20, 8);
+
+            // Rail highlights
+            ctx.strokeStyle = 'rgba(106, 75, 215, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(10, this.railY - 4);
+            ctx.lineTo(this.W - 10, this.railY - 4);
+            ctx.stroke();
+        }
+
+        drawChain(fromX, fromY, toX, toY) {
+            const ctx = this.ctx;
+            const links = 8;
+            const dx = (toX - fromX) / links;
+            const dy = (toY - fromY) / links;
+
+            ctx.strokeStyle = '#8888aa';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            // Chain links
+            for (let i = 0; i <= links; i++) {
+                const x = fromX + dx * i;
+                const y = fromY + dy * i;
+                ctx.fillStyle = i % 2 === 0 ? '#9999bb' : '#7777aa';
+                ctx.beginPath();
+                ctx.ellipse(x, y, 3, 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        drawClaw(x, y, openAngle, hasItem) {
+            const ctx = this.ctx;
+            const w = this.clawWidth;
+
+            // Motor box
+            ctx.fillStyle = '#4a4a7a';
+            ctx.fillRect(x - 12, this.railY + 2, 24, 14);
+            ctx.strokeStyle = '#6A4BD7';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x - 12, this.railY + 2, 24, 14);
+
+            // Chain from motor to claw
+            this.drawChain(x, this.railY + 16, x, y);
+
+            // Claw hub
+            ctx.fillStyle = '#6a6a9a';
+            ctx.beginPath();
+            ctx.arc(x, y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#8888bb';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 3 prongs: left, center, right
+            const prongLength = w * 0.55;
+            const prongAngles = [
+                -Math.PI / 2 - openAngle,  // left prong
+                -Math.PI / 2,               // center prong
+                -Math.PI / 2 + openAngle    // right prong
+            ];
+            // Hook curl directions: left curls right (+), center curls straight down, right curls left (-)
+            const hookDirs = [1, 0, -1];
+
+            for (let i = 0; i < 3; i++) {
+                const angle = prongAngles[i];
+                const tipX = x + Math.cos(angle) * prongLength;
+                const tipY = y - Math.sin(angle) * prongLength;
+
+                // Prong arm
+                ctx.strokeStyle = '#8888cc';
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(tipX, tipY);
+                ctx.stroke();
+
+                // Prong tip (hook) - curls inward toward center
+                const hookLen = 10;
+                let hookEndX, hookEndY;
+                if (hookDirs[i] === 0) {
+                    // Center prong: hook curls straight down
+                    hookEndX = tipX;
+                    hookEndY = tipY + hookLen;
+                } else {
+                    // Side prongs: curl inward (left hooks right, right hooks left)
+                    hookEndX = tipX + hookDirs[i] * hookLen * 0.7;
+                    hookEndY = tipY + hookLen * 0.7;
+                }
+                ctx.strokeStyle = '#aaaadd';
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(tipX, tipY);
+                ctx.lineTo(hookEndX, hookEndY);
+                ctx.stroke();
+            }
+
+            // Glow when active
+            if (this.state === State.MOVING || this.state === State.DROPPING) {
+                ctx.save();
+                ctx.globalAlpha = 0.15 + Math.sin(this.glowPhase * 3) * 0.1;
+                ctx.fillStyle = '#6A4BD7';
+                ctx.beginPath();
+                ctx.arc(x, y, w * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        drawCapsule(capsule) {
+            if (!capsule.visible || !this.bearLoaded) return;
+            const ctx = this.ctx;
+            const { x, y, radius, hue } = capsule;
+            const size = radius * 3;
+
+            ctx.save();
+            ctx.globalAlpha = 1;
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.beginPath();
+            ctx.ellipse(x + 2, y + radius * 0.8, radius * 0.8, radius * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.filter = `hue-rotate(${hue}deg)`;
+            ctx.drawImage(this.bearImg, x - size / 2, y - size / 2, size, size);
+            ctx.filter = 'none';
+            ctx.restore();
+        }
+
+        drawGrabbedCapsule() {
+            if (!this.grabbedCapsule || !this.bearLoaded) return;
+            const ctx = this.ctx;
+            const r = this.capsuleRadius;
+            const x = this.claw.x;
+            const y = this.claw.y + this.clawWidth * 0.45;
+            const size = r * 3;
+
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.filter = `hue-rotate(${this.grabbedCapsule.hue}deg)`;
+            ctx.drawImage(this.bearImg, x - size / 2, y - size / 2, size, size);
+            ctx.restore();
+        }
+
+        lightenColor(hex, amount) {
+            const num = parseInt(hex.slice(1), 16);
+            const r = Math.min(255, (num >> 16) + amount);
+            const g = Math.min(255, ((num >> 8) & 0xff) + amount);
+            const b = Math.min(255, (num & 0xff) + amount);
+            return `rgb(${r},${g},${b})`;
+        }
+
+        darkenColor(hex, amount) {
+            const num = parseInt(hex.slice(1), 16);
+            const r = Math.max(0, (num >> 16) - amount);
+            const g = Math.max(0, ((num >> 8) & 0xff) - amount);
+            const b = Math.max(0, (num & 0xff) - amount);
+            return `rgb(${r},${g},${b})`;
+        }
+
+        // ==========================================
+        // GAME LOOP
+        // ==========================================
+
+        animate(time) {
+            const dt = Math.min(32, time - this.lastTime) / 16;
+            this.lastTime = time;
+            this.glowPhase += 0.02;
+
+            this.update(dt);
+            this.draw();
+            this.confetti.update();
+
+            requestAnimationFrame(this.animate);
+        }
+
+        update(dt) {
+            // Screen shake decay
+            if (this.shakeAmount > 0) {
+                this.shakeAmount *= 0.9;
+                if (this.shakeAmount < 0.5) this.shakeAmount = 0;
+            }
+
+            // Capsule idle wobble
+            const t = performance.now() / 1000;
+            for (const c of this.capsules) {
+                if (c.visible && this.state !== State.DROPPING) {
+                    c.x = c.baseX + Math.sin(t * 1.5 + c.phase) * 1.5;
+                    c.y = c.baseY + Math.sin(t * 2 + c.phase + 1) * 1;
+                }
+            }
+
+            switch (this.state) {
+                case State.MOVING: {
+                    const speed = CONFIG.clawSpeed * dt;
+                    this.claw.x += speed * this.claw.direction;
+                    const margin = 40;
+                    if (this.claw.x > this.W - margin) {
+                        this.claw.x = this.W - margin;
+                        this.claw.direction = -1;
+                    }
+                    if (this.claw.x < margin) {
+                        this.claw.x = margin;
+                        this.claw.direction = 1;
+                    }
+                    this.claw.y = this.railY + 10;
+                    break;
+                }
+
+                case State.DROPPING: {
+                    const speed = CONFIG.dropSpeed * dt;
+                    this.claw.y += speed;
+                    // Keep claw open while dropping - only close on grab
+
+                    if (this.claw.y >= this.dropTargetY) {
+                        this.claw.y = this.dropTargetY;
+                        this.state = State.GRABBING;
+                        this.claw.openAngle = 0.08;
+                        this.sound.play('grab');
+
+                        if (!this.willMiss && this.targetCapsule) {
+                            // Successful grab
+                            this.grabbedCapsule = this.targetCapsule;
+                            this.targetCapsule.visible = false;
+                        } else {
+                            // Missed - claw closes on nothing
+                            this.grabbedCapsule = null;
+                        }
+
+                        // Pause then rise
+                        setTimeout(() => {
+                            if (this.state === State.GRABBING) {
+                                this.state = State.RISING;
+                                this.sound.play('rise');
+                            }
+                        }, CONFIG.grabPause);
+                    }
+                    break;
+                }
+
+                case State.RISING: {
+                    const speed = CONFIG.riseSpeed * dt;
+                    this.claw.y -= speed;
+
+                    // If no prize, drop the capsule partway up
+                    if (this.grabbedCapsule && this.currentPrize === CONFIG.prizes[0]) {
+                        const dropPoint = this.dropTargetY - (this.dropTargetY - this.railY) * 0.4;
+                        if (this.claw.y <= dropPoint && !this.droppedCapsule) {
+                            this.droppedCapsule = {
+                                x: this.claw.x,
+                                y: this.claw.y + this.clawWidth * 0.45,
+                                vy: 0,
+                                radius: this.capsuleRadius,
+                                hue: this.grabbedCapsule.hue
+                            };
+                            this.grabbedCapsule = null;
+                            this.claw.openAngle = 0.5;
+                            this.sound.play('lose');
+                        }
+                    }
+
+                    if (this.claw.y <= this.railY + 10) {
+                        this.claw.y = this.railY + 10;
+                        this.showPrize();
+                    }
+                    break;
+                }
+            }
+
+            // Animate the dropped capsule falling
+            if (this.droppedCapsule) {
+                const dc = this.droppedCapsule;
+                dc.vy += 0.5 * dt;
+                dc.y += dc.vy * dt;
+                const ground = this.floorY - dc.radius;
+                if (dc.y >= ground) {
+                    dc.y = ground;
+                    dc.vy = -dc.vy * 0.35;
+                    if (Math.abs(dc.vy) < 1) dc.vy = 0;
+                }
+            }
+        }
+
+        draw() {
+            const ctx = this.ctx;
+
+            ctx.save();
+
+            // Screen shake
+            if (this.shakeAmount > 0) {
+                const sx = (Math.random() - 0.5) * this.shakeAmount;
+                const sy = (Math.random() - 0.5) * this.shakeAmount;
+                ctx.translate(sx, sy);
+            }
+
+            // Clear
+            ctx.fillStyle = '#F5F5F0';
+            ctx.fillRect(-10, -10, this.W + 20, this.H + 20);
+
+            this.drawBackground();
+            this.drawRail();
+
+            // Draw capsules
+            for (const c of this.capsules) {
+                this.drawCapsule(c);
+            }
+
+            // Draw claw
+            this.drawClaw(this.claw.x, this.claw.y, this.claw.openAngle, !!this.grabbedCapsule);
+
+            // Draw grabbed capsule
+            this.drawGrabbedCapsule();
+
+            // Draw dropping capsule
+            if (this.droppedCapsule && this.bearLoaded) {
+                const dc = this.droppedCapsule;
+                const size = dc.radius * 3;
+                ctx.save();
+                ctx.globalAlpha = 1;
+                ctx.filter = `hue-rotate(${dc.hue}deg)`;
+                ctx.drawImage(this.bearImg, dc.x - size / 2, dc.y - size / 2, size, size);
+                ctx.restore();
+            }
+
+            // Idle decoration - floating text
+            if (this.state === State.IDLE) {
+                ctx.save();
+                ctx.globalAlpha = 0.3 + Math.sin(this.glowPhase * 2) * 0.15;
+                ctx.fillStyle = '#6A4BD7';
+                ctx.font = '600 16px Space Grotesk, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Win amazing prizes!', this.W / 2, this.H / 2 - 20);
+                ctx.restore();
+            }
+
+            ctx.restore();
+        }
+    }
+
+    // ==========================================
+    // INIT
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+        new ClawMachine();
+    });
+    </script>
+</body>
+</html>
