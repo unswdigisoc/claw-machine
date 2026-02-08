@@ -743,8 +743,13 @@
             this.droppedCapsule = null;
             this.shakeAmount = 0;
 
-            // Restore all capsules
-            this.capsules.forEach(c => c.visible = true);
+            // Restore all capsules and shuffle colors
+            const allHues = this.capsules.map(c => c.hue);
+            for (let i = allHues.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allHues[i], allHues[j]] = [allHues[j], allHues[i]];
+            }
+            this.capsules.forEach((c, i) => { c.visible = true; c.hue = allHues[i]; });
 
             this.btn.textContent = 'TAP TO PLAY';
             this.btn.className = 'play';
