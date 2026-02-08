@@ -48,8 +48,8 @@
         }
 
         #cabinet-header img {
-            height: 60px;
-            width: 60px;
+            height: 72px;
+            width: 72px;
             border-radius: 8px;
             object-fit: cover;
             position: absolute;
@@ -87,6 +87,29 @@
             background: linear-gradient(180deg, #6A4BD7 0%, #6A4BD7 100%);
             border-top: 3px solid #6A4BD7;
             flex-shrink: 0;
+            position: relative;
+        }
+
+        #fullscreenBtn {
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease;
+        }
+
+        #fullscreenBtn:hover {
+            background: rgba(255,255,255,0.35);
         }
 
         #actionBtn {
@@ -247,7 +270,7 @@
     <div id="game-wrapper">
         <div id="cabinet-header">
             <img src="logo.jpeg" alt="DigiSoc">
-            <h1>Digisoc Claw Machine</h1>
+            <h1>Digisoc Catch-A-Bear</h1>
         </div>
 
         <div id="game-area">
@@ -258,6 +281,7 @@
 
         <div id="controls">
             <button id="actionBtn" class="play">TAP TO PLAY</button>
+            <button id="fullscreenBtn" title="Fullscreen">⛶</button>
         </div>
 
         <div id="overlay">
@@ -523,6 +547,13 @@
             this.btn.addEventListener('click', () => this.onAction());
             this.btn.addEventListener('touchstart', (e) => { e.preventDefault(); this.onAction(); });
             document.getElementById('playAgainBtn').addEventListener('click', () => this.reset());
+            document.getElementById('fullscreenBtn').addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            });
 
             this.lastTime = 0;
             this.animate = this.animate.bind(this);
@@ -561,7 +592,53 @@
                 this.claw.y = this.railY + 10;
             }
 
-            this.initCapsules();
+            if (this.state === State.IDLE || this.capsules.length === 0) {
+                this.initCapsules();
+            } else {
+                // Reposition existing capsules to new layout without resetting visibility
+                const r = this.capsuleRadius;
+                const margin = r * 3;
+                const usableWidth = this.W - margin * 2;
+                const spacing = usableWidth / this.capsules.length;
+                for (let i = 0; i < this.capsules.length; i++) {
+                    const slotCenter = margin + spacing * i + spacing / 2;
+                    const row = i % 2;
+                    const c = this.capsules[i];
+                    c.x = slotCenter;
+                    c.y = this.floorY - r * 3 - row * r * 2;
+                    c.baseX = c.x;
+                    c.baseY = c.y;
+                    c.radius = r;
+                }
+            }
+            this.initBackgroundSquares();
+        }
+
+        initBackgroundSquares() {
+            this.bgSquares = [];
+            const colors = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFEAA7', '#DDA0DD',
+                '#F7DC6F', '#6A4BD7', '#85C1E9', '#6AEEAF', '#F1948A',
+                '#F0B27A', '#BB8FCE', '#AED6F1', '#E8DAEF', '#FAD7A0',
+                '#FF9FF3', '#54A0FF', '#5F27CD', '#01A3A4', '#F368E0'
+            ];
+            const size = 28;
+            const cols = Math.ceil(this.W / size) + 1;
+            const rows = 8;
+            const startY = this.floorY - rows * size * 0.85;
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    this.bgSquares.push({
+                        x: col * size + (Math.random() - 0.5) * 6,
+                        y: startY + row * size * 0.85 + (Math.random() - 0.5) * 6,
+                        size: size * (0.7 + Math.random() * 0.5),
+                        rotation: (Math.random() - 0.5) * 1.2,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        alpha: 0.35 + Math.random() * 0.3
+                    });
+                }
+            }
         }
 
         initCapsules() {
@@ -737,12 +814,19 @@
                 ctx.stroke();
             }
 
-            // Floor
-            const floorGrad = ctx.createLinearGradient(0, this.floorY - 20, 0, this.floorY);
-            floorGrad.addColorStop(0, 'transparent');
-            floorGrad.addColorStop(1, 'rgba(106, 75, 215, 0.2)');
-            ctx.fillStyle = floorGrad;
-            ctx.fillRect(0, this.floorY - 20, this.W, 20);
+            // Colorful background squares at the bottom
+            if (this.bgSquares) {
+                for (const sq of this.bgSquares) {
+                    ctx.save();
+                    ctx.translate(sq.x, sq.y);
+                    ctx.rotate(sq.rotation);
+                    ctx.globalAlpha = sq.alpha;
+                    ctx.fillStyle = sq.color;
+                    const half = sq.size / 2;
+                    ctx.fillRect(-half, -half, sq.size, sq.size);
+                    ctx.restore();
+                }
+            }
 
             // Floor line
             ctx.strokeStyle = 'rgba(106, 75, 215, 0.3)';
