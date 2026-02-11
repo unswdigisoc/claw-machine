@@ -239,17 +239,6 @@
             transform: scale(0.96);
         }
 
-        #stats {
-            position: absolute;
-            top: 8px;
-            right: 12px;
-            font-size: 0.65rem;
-            color: #6b7280;
-            z-index: 20;
-            text-align: right;
-            line-height: 1.5;
-        }
-
         #confettiCanvas {
             position: absolute;
             inset: 0;
@@ -282,7 +271,6 @@
         <div id="game-area">
             <canvas id="gameCanvas"></canvas>
             <canvas id="confettiCanvas"></canvas>
-            <div id="stats"></div>
         </div>
 
         <div id="controls">
@@ -524,8 +512,6 @@
 
             this.btn = document.getElementById('actionBtn');
             this.overlay = document.getElementById('overlay');
-            this.statsEl = document.getElementById('stats');
-
             this.state = State.IDLE;
             this.claw = { x: 0, y: 0, openAngle: 0.5, direction: 1 };
             this.capsules = [];
@@ -535,11 +521,6 @@
             this.glowPhase = 0;
             this.willMiss = false;
             this.droppedCapsule = null;
-
-            // Stats
-            this.totalPlays = 0;
-            this.smallWins = 0;
-            this.bigWins = 0;
 
             // Layout values (set in resize)
             this.railY = 0;
@@ -763,7 +744,6 @@
 
         showPrize() {
             this.state = State.REVEAL;
-            this.totalPlays++;
 
             const prize = this.currentPrize;
             const prizeIndex = CONFIG.prizes.indexOf(prize);
@@ -781,12 +761,10 @@
 
             if (prizeIndex === 1) {
                 // Small win
-                this.smallWins++;
                 this.sound.play('win-small');
                 this.confetti.burst(cx, cy, 40, ['#4ade80', '#22d3ee', '#9B82E3', '#fbbf24']);
             } else if (prizeIndex === 2) {
                 // Big win
-                this.bigWins++;
                 this.sound.play('win-big');
                 this.shakeAmount = 12;
                 this.confetti.burst(cx, cy, 80, ['#fbbf24', '#f59e0b', '#ef4444', '#ec4899', '#9B82E3', '#06b6d4']);
@@ -795,11 +773,6 @@
                 this.sound.play('lose');
             }
 
-            this.updateStats();
-        }
-
-        updateStats() {
-            this.statsEl.innerHTML = `Plays: ${this.totalPlays} | Wins: ${this.smallWins + this.bigWins}`;
         }
 
         // ==========================================
