@@ -132,14 +132,12 @@
             background: #6AEEAF;
             color: white;
             box-shadow: 0 4px 20px rgba(106, 238, 175, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
-            animation: btnPulse 2s ease-in-out infinite;
         }
 
         #actionBtn.drop {
             background: linear-gradient(135deg, #ef4444, #dc2626);
             color: white;
             box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
-            animation: btnPulse 0.8s ease-in-out infinite;
         }
 
         #actionBtn.disabled {
@@ -154,10 +152,6 @@
             transform: scale(0.96);
         }
 
-        @keyframes btnPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-        }
 
         #overlay {
             position: absolute;
@@ -295,9 +289,9 @@
     // ==========================================
     const CONFIG = {
         prizes: [
-            { name: 'No Prize', weight: 57, color: '#6B7280', emoji: '❌', message: 'Better luck next time!', cssClass: 'prize-no' },
-            { name: 'Small Win!', weight: 40, color: '#4ADE80', emoji: '🎉', message: 'Nice! You won a small prize!', cssClass: 'prize-small' },
-            { name: 'BIG WIN!',   weight:  3, color: '#FFD700', emoji: '🏆', message: 'INCREDIBLE! You won the grand prize!', cssClass: 'prize-big' }
+            { name: 'No Prize', weight: 40, color: '#6B7280', emoji: '❌', message: 'Better luck next time!', cssClass: 'prize-no' },
+            { name: 'Small Win!', weight: 50, color: '#4ADE80', emoji: '🎉', message: 'Nice! You won a small prize!', cssClass: 'prize-small' },
+            { name: 'BIG WIN!',   weight: 10, color: '#FFD700', emoji: '🏆', message: 'INCREDIBLE! You won the grand prize!', cssClass: 'prize-big' }
         ],
         clawSpeed: 7,         // Horizontal claw speed
         dropSpeed: 4,         // How fast claw drops
